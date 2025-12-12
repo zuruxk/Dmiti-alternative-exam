@@ -1,7 +1,7 @@
 class Natural:
     def __init__(self, n, A):
-        self.A = A  # [] массив из int   123 -> [1, 2, 3]
         self.len = n  # int len(A)-1
+        self.A = A  # [] массив из int   123 -> [1, 2, 3]
         # Автоматически убираем ведущие нули при создании
         while len(self.A) > 1 and self.A[0] == 0:
             self.A.pop(0)
