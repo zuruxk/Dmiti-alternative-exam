@@ -8,4 +8,23 @@
 
 
 ## Технологии
-Язык программирования: Python 3.12.6
++ Язык программирования: Python 3.12.6
++ Графический интерфейс: Tkinter
++ Математическая визуализация: Matplotlib
++ Архитектура: Модульная с использованием объектно-ориентированного подхода
+
+## Установка и запуск
+### Требования:
++ Python 3.8 или выше
++ Библиотеки: tkinter, matplotlib
+
+### Запуск:
+1. Клонируйте репозиторий:
+   ```bash
+   git clone https://github.com/zuruxk/Dmiti-alternative-exam.git
+   cd Dmiti-alternative-exam
+   ```
+2. Запустите приложение:
+   ```bash
+   python3 interface/interface.py
+   ```
