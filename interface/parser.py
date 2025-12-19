@@ -1,6 +1,10 @@
 import re
 from rational_algebra.Polynomial import Polynomial
 from rational_algebra.Rational import Rational
+from rational_algebra.Integer import Integer
+from rational_algebra.Natural import Natural
+from complex_algebra.Complex import Complex
+from complex_algebra.ComplexPolynomial import ComplexPolynomial
 from rational_algebra.TRANS.TRANS_INT_Q import TRANS_INT_Q
 from rational_algebra.TRANS.TRANS_STR_P import TRANS_STR_P
 from rational_algebra.TRANS.TRANS_Q_P import TRANS_Q_P
@@ -22,7 +26,6 @@ def to_rpn(expression: str):
     # Обрабатываем специальные операторы
     expression = expression.replace('//', '§')  # временная замена для целочисленного деления
 
-    # === ДОПОЛНИТЕЛЬНО: вставляем * между скобкой и x ===
     # Например: (...)x → (...)*x
     expression = re.sub(r'(?<=\))(?=x)', '*', expression)
     # Также: число сразу перед x (например 3x) → 3*x
@@ -232,3 +235,392 @@ def eval_rpn_q(tokens):
 
     return stack[-1]
 
+def parse_complex_str(s):
+    """Парсит строку вида 'a+bi' в Complex"""
+    s = s.replace(' ', '')
+    
+    if s == 'i':
+        real = Rational(Integer(0, 0, [0]), Natural(0, [1]))
+        imag = Rational(Integer(0, 0, [1]), Natural(0, [1]))
+        return Complex(real, imag)
+    elif s == '-i':
+        real = Rational(Integer(0, 0, [0]), Natural(0, [1]))
+        imag = Rational(Integer(1, 0, [1]), Natural(0, [1]))
+        return Complex(real, imag)
+
+    if any(op in s for op in ['+', '-', '*', '/', '^']):
+        # Это выражение, а не просто число
+        raise ValueError(f"'{s}' - это выражение, а не число")
+
+    try:
+        num = int(s)
+        num_int = Integer(0 if num >= 0 else 1,
+                         len(str(abs(num))) - 1,
+                         [int(d) for d in str(abs(num))])
+        real = Rational(num_int, Natural(0, [1]))
+        imag = Rational(Integer(0, 0, [0]), Natural(0, [1]))
+        return Complex(real, imag)
+    except:
+        raise ValueError(f"Не удалось распознать число: {s}")
+
+def to_rpn_complex(expression: str):
+    """Преобразует выражение с комплексными числами в RPN"""
+    expression = expression.replace(' ', '')
+
+    import re
+
+    expression = re.sub(r'(?<!\d)(?<!\.)(?<!\))i', '(0+1i)', expression)
+    expression = re.sub(r'(\d+)i', r'\1*(0+1i)', expression)
+
+    token_pattern = r'(\(0\+1i\)|\(0-1i\)|\d+\.\d+|\d+|[+\-*/^()])'
+    tokens = re.findall(token_pattern, expression)
+
+    output = []
+    stack = []
+    
+    precedence = {'^': 4, '*': 3, '/': 3, '+': 2, '-': 2}
+    right_assoc = {'^'}
+    
+    for token in tokens:
+        if re.fullmatch(r'\d+(\.\d+)?', token) or token in ['(0+1i)', '(0-1i)']:
+            output.append(token)
+        elif token in precedence:
+            while stack and stack[-1] in precedence:
+                top = stack[-1]
+                if (token not in right_assoc and precedence[token] <= precedence[top]) or \
+                        (token in right_assoc and precedence[token] < precedence[top]):
+                    output.append(stack.pop())
+                else:
+                    break
+            stack.append(token)
+        elif token == '(':
+            stack.append(token)
+        elif token == ')':
+            while stack and stack[-1] != '(':
+                output.append(stack.pop())
+            stack.pop()
+    
+    while stack:
+        output.append(stack.pop())
+    
+    result = []
+    for token in output:
+        if token == '(0+1i)':
+            result.append('1i')
+        elif token == '(0-1i)':
+            result.append('-1i')
+        else:
+            result.append(token)
+    
+    return result
+
+def parse_complex_token(token):
+    """Парсит токен в комплексное число"""
+    
+    if token == '1i':
+        real = Rational(Integer(0, 0, [0]), Natural(0, [1]))
+        imag = Rational(Integer(0, 0, [1]), Natural(0, [1]))
+        return Complex(real, imag)
+    elif token == '-1i':
+        real = Rational(Integer(0, 0, [0]), Natural(0, [1]))
+        imag = Rational(Integer(1, 0, [1]), Natural(0, [1]))
+        return Complex(real, imag)
+    else:
+        try:
+            num = int(token)
+            num_int = Integer(0 if num >= 0 else 1,
+                             len(str(abs(num))) - 1,
+                             [int(d) for d in str(abs(num))])
+            real = Rational(num_int, Natural(0, [1]))
+            imag = Rational(Integer(0, 0, [0]), Natural(0, [1]))
+            return Complex(real, imag)
+        except:
+            raise ValueError(f"Не удалось распознать токен как число: {token}")
+
+def eval_rpn_complex(tokens):
+    """Вычисляет RPN для комплексных выражений"""
+    stack = []
+    
+    for t in tokens:
+        if t in ['+', '-', '*', '/', '^']:
+            if len(stack) < 2:
+                raise ValueError(f"Недостаточно операндов для операции {t}")
+            b = stack.pop()
+            a = stack.pop()
+            
+            if t == '+':
+                result = a + b
+            elif t == '-':
+                result = a - b
+            elif t == '*':
+                result = a * b
+            elif t == '/':
+                result = a / b
+            elif t == '^':
+                if isinstance(b, Complex):
+                    if b.imaginary.numerator.A == [0]:
+                        try:
+                            numer_str = ''.join(map(str, b.real.numerator.A))
+                            denom_str = ''.join(map(str, b.real.denominator.A))
+                            
+                            numerator = int(numer_str) if numer_str else 0
+                            denominator = int(denom_str) if denom_str else 1
+                            
+                            if b.real.numerator.s == 1:
+                                numerator = -numerator
+                            
+                            power_value = numerator // denominator
+                            
+                            if power_value < 0:
+                                raise ValueError("Степень должна быть натуральным числом")
+
+                            from rational_algebra.Natural import Natural
+                            power_str = str(power_value)
+                            power_digits = [int(d) for d in power_str]
+                            n_natural = Natural(len(power_digits)-1, power_digits)
+                            
+                            result = a.POW_CN_C(n_natural)
+                        except Exception as e:
+                            raise ValueError(f"Ошибка возведения в степень: {e}")
+                    else:
+                        raise ValueError("Степень должна быть действительным числом")
+                else:
+                    raise ValueError("Степень должна быть комплексным числом")
+            
+            stack.append(result)
+        else:
+            # Парсим число
+            try:
+                stack.append(parse_complex_token(t))
+            except Exception as e:
+                raise
+    
+    return stack[-1] if stack else None
+
+def parse_complex_polynomial_token(token):
+    """Парсит токен для комплексного полинома"""
+    if token == 'i':
+        return Complex(Rational(Integer(0, 0, [1]), Natural(0, [1])), 
+                       Rational(Integer(0, 0, [0]), Natural(0, [1])))
+    elif token.startswith('-i'):
+        return Complex(Rational(Integer(0, 0, [1]), Natural(0, [1])), 
+                       Rational(Integer(1, 0, [1]), Natural(0, [1])))
+    elif 'i' in token:
+        parts = token.split('i')
+        real = int(parts[0]) if parts[0] else 0
+        return Complex(TRANS_INT_Q(real), 
+                       Rational(Integer(0, 0, [1]), Natural(0, [1])))
+    else:
+        num = int(token)
+        return Complex(TRANS_INT_Q(num), 
+                       Rational(Integer(0, 0, [0]), Natural(0, [1])))
+
+def eval_rpn_complex_poly(tokens):
+    """Вычисляет RPN для комплексных полиномов - УПРОЩЕННАЯ ВЕРСИЯ"""
+    stack = []
+    
+    for t in tokens:
+        
+        if t in ['+', '-', '*', '/', '%']:
+            if len(stack) < 2:
+                raise ValueError(f"Недостаточно операндов для операции {t}")
+            b = stack.pop()
+            a = stack.pop()
+            
+            if t == '+':
+                result = a + b
+            elif t == '-':
+                result = a - b
+            elif t == '*':
+                result = a * b
+            elif t == '/':
+                result = a // b
+            elif t == '%':
+                result = a % b
+            
+            stack.append(result)
+            
+        else:
+            # Парсим токен
+            if t.startswith('(0+') and t.endswith('i)'):
+                sign = t[3]
+                imag_str = t[4:-2]
+                imag = int(imag_str) if imag_str else 1
+                if sign == '-':
+                    imag = -imag
+                
+                real = TRANS_INT_Q(0)
+                imag_rational = TRANS_INT_Q(imag)
+                coeff = Complex(real, imag_rational)
+                coeffs = [coeff]
+                poly = ComplexPolynomial(0, coeffs)
+                stack.append(poly)
+                
+            elif 'x' in t:
+                if '^' in t:
+                    parts = t.split('^')
+                    coeff_part = parts[0].replace('x', '')
+                    degree = int(parts[1])
+
+                    if not coeff_part or coeff_part == '+':
+                        coeff_val = 1
+                    elif coeff_part == '-':
+                        coeff_val = -1
+                    else:
+                        coeff_val = int(coeff_part)
+
+                    coeff = Complex(TRANS_INT_Q(coeff_val), TRANS_INT_Q(0))
+
+                    zero = Complex(TRANS_INT_Q(0), TRANS_INT_Q(0))
+                    coeffs = [coeff] + [zero] * degree
+                    poly = ComplexPolynomial(degree, coeffs)
+                    
+                else:
+                    coeff_part = t.replace('x', '')
+                    
+                    if not coeff_part or coeff_part == '+':
+                        coeff_val = 1
+                    elif coeff_part == '-':
+                        coeff_val = -1
+                    else:
+                        coeff_val = int(coeff_part)
+
+                    coeff = Complex(TRANS_INT_Q(coeff_val), TRANS_INT_Q(0))
+
+                    zero = Complex(TRANS_INT_Q(0), TRANS_INT_Q(0))
+                    coeffs = [coeff, zero]
+                    poly = ComplexPolynomial(1, coeffs)
+                
+                stack.append(poly)
+                
+            else:
+                num = int(t)
+                coeff = Complex(TRANS_INT_Q(num), TRANS_INT_Q(0))
+                coeffs = [coeff]
+                poly = ComplexPolynomial(0, coeffs)
+                stack.append(poly)
+    
+    if len(stack) != 1:
+        raise ValueError(f"В стеке осталось {len(stack)} элементов, ожидался 1")
+    
+    return stack[0]
+
+def parse_complex_str(s):
+    """Парсит строку вида 'a+bi', '(a+bi)', '-5i' в Complex"""
+    s = s.strip()
+
+    if s.startswith('(') and s.endswith(')'):
+        s = s[1:-1]
+    
+    if s == 'i':
+        return Complex(Rational(Integer(0, 0, [1]), Natural(0, [1])), 
+                       Rational(Integer(0, 0, [0]), Natural(0, [1])))
+    elif s == '-i':
+        return Complex(Rational(Integer(1, 0, [1]), Natural(0, [1])), 
+                       Rational(Integer(0, 0, [0]), Natural(0, [1])))
+
+    if 'i' in s:
+        parts = s.replace('+', ' +').replace('-', ' -').split()
+        
+        real_part = 0
+        imag_part = 0
+        
+        for part in parts:
+            if part == '':
+                continue
+                
+            if 'i' in part:
+                # Мнимая часть
+                imag_str = part.replace('i', '').strip()
+                if imag_str == '' or imag_str == '+':
+                    imag_part = 1
+                elif imag_str == '-':
+                    imag_part = -1
+                else:
+                    imag_part = int(imag_str)
+            else:
+                real_part = int(part)
+
+        real_rational = TRANS_INT_Q(real_part)
+
+        imag_sign = 1 if imag_part >= 0 else 0
+        imag_abs = abs(imag_part)
+        imag_digits = [int(d) for d in str(imag_abs)]
+        imag_int = Integer(imag_sign, len(imag_digits)-1, imag_digits)
+        imag_rational = Rational(imag_int, Natural(0, [1]))
+        
+        return Complex(real_rational, imag_rational)
+    else:
+        num = int(s)
+        return Complex(TRANS_INT_Q(num), 
+                       Rational(Integer(0, 0, [0]), Natural(0, [1])))
+    
+def to_rpn_complex_poly(expression: str):
+    """Преобразует выражение с комплексными полиномами в RPN - УПРОЩЕННАЯ ВЕРСИЯ"""
+    expression = expression.replace(' ', '')
+
+    expression = re.sub(r'(?<!\d)i(?!\d)', '(0+1i)', expression)
+
+    expression = re.sub(r'(\d+)i', r'\1*(0+1i)', expression)
+
+    expression = re.sub(r'-i', '-(0+1i)', expression)
+
+    expression = re.sub(r'(?<=\d)(?=x)', '*', expression)
+
+    expression = re.sub(r'(?<=\))(?=x)', '*', expression)
+
+    token_pattern = r'(\(0[+-]\d+i\)|x\^\d+|x|\d+\.\d+|\d+|[+\-*/^()])'
+    tokens = re.findall(token_pattern, expression)
+
+    processed = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == '-':
+            if i == 0 or tokens[i - 1] in {'+', '-', '*', '/', '^', '('}:
+                if i + 1 < len(tokens):
+                    nxt = tokens[i + 1]
+                    if nxt not in ['+', '-', '*', '/', '^', ')']:
+                        combined = '-' + nxt
+                        processed.append(combined)
+                        i += 1
+                    else:
+                        processed.append(tok)
+                else:
+                    processed.append(tok)
+            else:
+                processed.append(tok)
+        elif tok != '':
+            processed.append(tok)
+        i += 1
+
+    output = []
+    stack = []
+
+    precedence = {'^': 4, '*': 3, '/': 3, '+': 2, '-': 2}
+    right_assoc = {'^'}
+
+    for token in processed:
+        if re.fullmatch(r'-?\d+(\.\d+)?', token) or re.fullmatch(r'-?x(\^\d+)?', token) or \
+           re.fullmatch(r'\(0[+-]\d+i\)', token):
+            output.append(token)
+        elif token in precedence:
+            while stack and stack[-1] in precedence:
+                top = stack[-1]
+                if (token not in right_assoc and precedence[token] <= precedence[top]) or \
+                   (token in right_assoc and precedence[token] < precedence[top]):
+                    output.append(stack.pop())
+                else:
+                    break
+            stack.append(token)
+        elif token == '(':
+            stack.append(token)
+        elif token == ')':
+            while stack and stack[-1] != '(':
+                output.append(stack.pop())
+            stack.pop()
+
+    while stack:
+        output.append(stack.pop())
+
+    return output
