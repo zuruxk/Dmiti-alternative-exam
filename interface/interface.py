@@ -384,8 +384,6 @@ class Calculator:
 
     def process_expression(self, expr):
         """Обрабатывает выражение в зависимости от типа калькулятора"""
-        # Здесь будет происходить передача строки с выражением
-        # в соответствующий модуль обработки
 
         if self.calc_type == "natural":
             ans = eval_rpn_n(to_rpn(expr))
@@ -579,7 +577,7 @@ class ComplexCalculator(Calculator):
             ('Inv', '1/z', 'Обратное'),
             ('Re', 'Re', 'Действительная часть'),
             ('Im', 'Im', 'Мнимая часть'),
-            ('Polar', 'Polar', 'Полярная форма')
+            ('Exp', 'Exp', 'Показательная форма')
         ]
         
         row1_frame = tk.Frame(special_frame)
@@ -655,7 +653,7 @@ class ComplexCalculator(Calculator):
                                     parent=self.window,
                                     minvalue=1)
             if n is not None:
-                from rational_algebra.Natural import Natural
+                # from rational_algebra.Natural import Natural
                 n_digits = [int(d) for d in str(n)]
                 n_nat = Natural(len(n_digits)-1, n_digits)
                 
@@ -774,7 +772,8 @@ class ComplexCalculator(Calculator):
                 result = self.current_result.IM_C_Q()
                 text = f"{result.show()}"
             elif operation == 'Abs':
-                result = self.current_result.ABS_C_Q()
+                from rational_algebra.Natural import Natural
+                result = self.current_result.ABS_C_Q().ROOT_QN_Q(Natural(0, [2]))
                 text = f"{result.show()}"
             elif operation == 'Cos':
                 result = self.current_result.COS_C_R()
@@ -791,7 +790,7 @@ class ComplexCalculator(Calculator):
             elif operation == 'Norm':
                 result = self.current_result.NORM_C_C()
                 text = f"{result.show_alg()}"
-            elif operation == 'Polar':
+            elif operation == 'Exp':
                 res = self.current_result.show_exp()
                 text = f"{res}"
             elif operation == 'Pow':
