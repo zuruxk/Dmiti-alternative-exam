@@ -235,45 +235,42 @@ def eval_rpn_q(tokens):
 
     return stack[-1]
 
-def parse_complex_str(s):
-    """Парсит строку вида 'a+bi' в Complex"""
-    s = s.replace(' ', '')
-    
-    if s == 'i':
-        real = Rational(Integer(0, 0, [0]), Natural(0, [1]))
-        imag = Rational(Integer(0, 0, [1]), Natural(0, [1]))
-        return Complex(real, imag)
-    elif s == '-i':
-        real = Rational(Integer(0, 0, [0]), Natural(0, [1]))
-        imag = Rational(Integer(1, 0, [1]), Natural(0, [1]))
-        return Complex(real, imag)
-
-    if any(op in s for op in ['+', '-', '*', '/', '^']):
-        # Это выражение, а не просто число
-        raise ValueError(f"'{s}' - это выражение, а не число")
-
-    try:
-        num = int(s)
-        num_int = Integer(0 if num >= 0 else 1,
-                         len(str(abs(num))) - 1,
-                         [int(d) for d in str(abs(num))])
-        real = Rational(num_int, Natural(0, [1]))
-        imag = Rational(Integer(0, 0, [0]), Natural(0, [1]))
-        return Complex(real, imag)
-    except:
-        raise ValueError(f"Не удалось распознать число: {s}")
-
 def to_rpn_complex(expression: str):
     """Преобразует выражение с комплексными числами в RPN"""
     expression = expression.replace(' ', '')
 
-    import re
-
+    # Заменяем 'i' на '(0+1i)'
     expression = re.sub(r'(?<!\d)(?<!\.)(?<!\))i', '(0+1i)', expression)
     expression = re.sub(r'(\d+)i', r'\1*(0+1i)', expression)
+    
+    # Заменяем '-i' на '-(0+1i)'
+    expression = expression.replace('-i', '-(0+1i)')
 
-    token_pattern = r'(\(0\+1i\)|\(0-1i\)|\d+\.\d+|\d+|[+\-*/^()])'
+    token_pattern = r'(\(0[+-]1i\)|\d+\.\d+|\d+|[+\-*/^()])'
     tokens = re.findall(token_pattern, expression)
+
+    processed = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == '-':
+            if i == 0 or tokens[i - 1] in {'+', '-', '*', '/', '^', '('}:
+                # Объединяем с следующим токеном
+                if i + 1 < len(tokens):
+                    nxt = tokens[i + 1]
+                    if nxt not in ['+', '-', '*', '/', '^', ')']:
+                        combined = '-' + nxt
+                        processed.append(combined)
+                        i += 1
+                    else:
+                        processed.append(tok)
+                else:
+                    processed.append(tok)
+            else:
+                processed.append(tok)
+        elif tok != '':
+            processed.append(tok)
+        i += 1
 
     output = []
     stack = []
@@ -281,8 +278,8 @@ def to_rpn_complex(expression: str):
     precedence = {'^': 4, '*': 3, '/': 3, '+': 2, '-': 2}
     right_assoc = {'^'}
     
-    for token in tokens:
-        if re.fullmatch(r'\d+(\.\d+)?', token) or token in ['(0+1i)', '(0-1i)']:
+    for token in processed:
+        if re.fullmatch(r'-?\d+(\.\d+)?', token) or token in ['(0+1i)', '(0-1i)']:
             output.append(token)
         elif token in precedence:
             while stack and stack[-1] in precedence:
@@ -303,12 +300,16 @@ def to_rpn_complex(expression: str):
     while stack:
         output.append(stack.pop())
     
+    # Преобразуем обратно в удобный формат
     result = []
     for token in output:
         if token == '(0+1i)':
             result.append('1i')
         elif token == '(0-1i)':
             result.append('-1i')
+        elif token.startswith('(') and token.endswith(')'):
+            # Это уже комплексное число в скобках
+            result.append(token)
         else:
             result.append(token)
     
@@ -513,11 +514,11 @@ def parse_complex_str(s):
         s = s[1:-1]
     
     if s == 'i':
-        return Complex(Rational(Integer(0, 0, [1]), Natural(0, [1])), 
-                       Rational(Integer(0, 0, [0]), Natural(0, [1])))
+        return Complex(Rational(Integer(0, 0, [0]), Natural(0, [1])), 
+                       Rational(Integer(0, 0, [1]), Natural(0, [1])))
     elif s == '-i':
-        return Complex(Rational(Integer(1, 0, [1]), Natural(0, [1])), 
-                       Rational(Integer(0, 0, [0]), Natural(0, [1])))
+        return Complex(Rational(Integer(0, 0, [0]), Natural(0, [1])), 
+                       Rational(Integer(1, 0, [1]), Natural(0, [1])))
 
     if 'i' in s:
         parts = s.replace('+', ' +').replace('-', ' -').split()
@@ -543,7 +544,7 @@ def parse_complex_str(s):
 
         real_rational = TRANS_INT_Q(real_part)
 
-        imag_sign = 1 if imag_part >= 0 else 0
+        imag_sign = 0 if imag_part >= 0 else 1
         imag_abs = abs(imag_part)
         imag_digits = [int(d) for d in str(imag_abs)]
         imag_int = Integer(imag_sign, len(imag_digits)-1, imag_digits)

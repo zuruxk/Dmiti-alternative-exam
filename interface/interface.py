@@ -668,13 +668,8 @@ class ComplexCalculator(Calculator):
             messagebox.showerror("Ошибка", f"Ошибка извлечения корня: {e}")
 
     def add_imaginary_unit(self):
-        """Добавляет мнимую единицу в выражение"""
-        current_text = self.display_input.get()
-
-        if current_text and (current_text[-1].isdigit() or current_text[-1] == ')'):
-            self.add_to_input('*i')
-        else:
-            self.add_to_input('i')
+        """Добавляет мнимую единицу в выражение"""  
+        self.add_to_input('i')
 
     def create_complex_plot(self, parent):
         """Создает график комплексной плоскости - КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ"""
