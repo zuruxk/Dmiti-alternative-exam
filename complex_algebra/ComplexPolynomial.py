@@ -52,7 +52,8 @@ class ComplexPolynomial:
 
         # Корректируем нулевой результат
         if len(result_coeffs) == 0:
-            result_coeffs.append(0)
+            result_coeffs.append(Complex(Rational(Integer(0, 0, [0]), Natural(0, [0])),
+                                         Rational(Integer(0, 0, [0]), Natural(0, [1]))))
 
         # Находим степень результата
         result_degree = len(result_coeffs) - 1
@@ -95,7 +96,8 @@ class ComplexPolynomial:
         
         # Корректируем нулевой результат
         if len(result_coeffs) == 0:
-            result_coeffs.append(0)
+            result_coeffs.append(Complex(Rational(Integer(0, 0, [0]), Natural(0, [0])),
+                                         Rational(Integer(0, 0, [0]), Natural(0, [1]))))
 
         # Находим степень результата
         result_degree = len(result_coeffs) - 1
