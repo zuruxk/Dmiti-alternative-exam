@@ -345,17 +345,51 @@ class Complex:
         # z_norm = cos(fi) + i*sin(fi)
         z_norm = self.NORM_C_C()
 
-        # Возводим нормированное в степень,
-        # (cos(fi) + i*sin(fi))^n = cos(n*fi) + i*sin(n*fi)
-        result_norm = Complex(Rational(Integer(0, 0, [1]), Natural(0, [1])), Rational(Integer(0, 0, [0]), Natural(0, [1])))
-        for _ in range(n_int):
-            result_norm = result_norm * z_norm
+        # Бинарное возведение нормированного вектора в степень
+        # Алгоритм быстрого возведения в степень
+        result_norm = Complex(Rational(Integer(0, 0, [1]), Natural(0, [1])), 
+                            Rational(Integer(0, 0, [0]), Natural(0, [1])))
+        base = z_norm
+        power = n_int
         
-        # Возводим аргумент в степень
+        # Инициализируем как единичный элемент
+        result_norm = Complex(Rational(Integer(0, 0, [1]), Natural(0, [1])),
+                            Rational(Integer(0, 0, [0]), Natural(0, [1])))
+        
+        # Для первого умножения используем единичный элемент
+        is_first = True
+        
+        while power > 0:
+            if power % 2 == 1:
+                if is_first:
+                    result_norm = base
+                    is_first = False
+                else:
+                    result_norm = result_norm * base
+            base = base * base
+            power //= 2
+        
+        # Если степень была 0, результат уже единичный (установлен выше)
+        
+        # Бинарное возведение аргумента r в степень
         r = self.ABS_C_Q().ROOT_QN_Q(Natural(0, [2]))
         r_power = Rational(Integer(0, 0, [1]), Natural(0, [1]))
-        for _ in range(n_int):
-            r_power = r_power * r
+        base_r = r
+        power_r = n_int
+        
+        # Инициализируем как единичный элемент для умножения
+        r_power = Rational(Integer(0, 0, [1]), Natural(0, [1]))
+        is_first_r = True
+        
+        while power_r > 0:
+            if power_r % 2 == 1:
+                if is_first_r:
+                    r_power = base_r
+                    is_first_r = False
+                else:
+                    r_power = r_power * base_r
+            base_r = base_r * base_r
+            power_r //= 2
 
         # Сохраняем в алгебраической форме
         return Complex(r_power * result_norm.real, r_power * result_norm.imaginary)
