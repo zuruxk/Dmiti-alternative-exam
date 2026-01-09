@@ -526,8 +526,8 @@ class ComplexCalculator(Calculator):
             '7', '8', '9', '/', 'i',
             '4', '5', '6', '*', '(',
             '1', '2', '3', '-', ')',
-            '0', '.', '=', '+', 'C',
-            '^', '²', '<—', '√', '||'
+            '0', '=', '+', 'C',
+            '^', '²', '<—', '||²'
         ]
         
         row = 0
@@ -546,9 +546,7 @@ class ComplexCalculator(Calculator):
                 cmd = lambda: self.add_to_input('^2')
             elif button == '^':
                 cmd = lambda: self.add_to_input('^')
-            elif button == '√':
-                cmd = self.calculate_root
-            elif button == '||':
+            elif button == '||²':
                 cmd = lambda: self.complex_operation('Abs')  # Модуль
             else:
                 cmd = lambda x=button: self.add_to_input(x)
@@ -596,10 +594,7 @@ class ComplexCalculator(Calculator):
             self.create_tooltip(btn, tooltip)
 
         special_buttons_row2 = [
-            ('Cos', 'cos θ', 'Косинус аргумента'),
-            ('Sin', 'sin θ', 'Синус аргумента'),
             ('Tan', 'tan θ', 'Тангенс аргумента'),
-            ('Norm', 'Norm', 'Нормализация'),
             ('Pow', 'z^n', 'Возведение в степень')
         ]
         
@@ -768,7 +763,7 @@ class ComplexCalculator(Calculator):
                 text = f"{result.show()}"
             elif operation == 'Abs':
                 from rational_algebra.Natural import Natural
-                result = self.current_result.ABS_C_Q().ROOT_QN_Q(Natural(0, [2]))
+                result = self.current_result.ABS_C_Q()
                 text = f"{result.show()}"
             elif operation == 'Cos':
                 result = self.current_result.COS_C_R()
